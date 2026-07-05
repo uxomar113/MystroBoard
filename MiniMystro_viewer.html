@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Mystro · Scorecard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ---- Surfaces: ops-wallboard charcoal ---- */
+    --bg: #0a0c0f;
+    --panel: #14171c;
+    --panel-2: #191d24;
+    --panel-raised: #1f242c;
+    --line: #262b33;
+    --line-soft: #1b2028;
+    --line-strong: #333a45;
+
+    --ink: #edeff2;
+    --ink-dim: #939bab;
+    --ink-faint: #59616f;
+
+    /* ---- Brand signal: wallboard amber, used sparingly ---- */
+    --amber: #ffb020;
+    --amber-dim: #7a5716;
+    --amber-bg: rgba(255, 176, 32, .12);
+    --amber-line: rgba(255, 176, 32, .32);
+
+    /* ---- Pass / fail signal system: the one thing color means here ---- */
+    --pass: #29d48b;
+    --pass-bg: rgba(41, 212, 139, .12);
+    --pass-line: rgba(41, 212, 139, .34);
+    --fail: #ff4d5e;
+    --fail-bg: rgba(255, 77, 94, .13);
+    --fail-line: rgba(255, 77, 94, .38);
+
+    --radius-xl: 22px;
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --maxw: 560px;
+
+    --f-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+    --f-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --f-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    --ease: cubic-bezier(.2,.7,.3,1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  html { background: var(--bg); }
+  body {
+    font-family: var(--f-body);
+    color: var(--ink);
+    min-height: 100vh;
+    background: var(--bg);
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+
+  button, input, select { font: inherit; color: inherit; }
+  button { -webkit-tap-highlight-color: transparent; cursor: pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+
+  .shell {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    border-left: 1px solid var(--line-soft);
+    border-right: 1px solid var(--line-soft);
+    background: var(--bg);
+  }
+
+  .view { display: none; min-height: 100vh; padding-bottom: 44px; }
+  .view.active { display: block; animation: viewIn .3s var(--ease); }
+  @keyframes viewIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .hidden { display: none !important; }
+
+  .upload-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    background:
+      radial-gradient(120% 100% at 50% 0%, rgba(255,176,32,.08), transparent 58%),
+      var(--bg);
+  }
+  .upload-card {
+    width: min(560px, 100%);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    padding: 26px 20px 22px;
+    box-shadow: 0 18px 60px rgba(0,0,0,.34);
+  }
+  .upload-kicker {
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    color: var(--amber);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 10px;
+  }
+  .upload-title {
+    margin: 0;
+    font-family: var(--f-display);
+    font-size: 1.2rem;
+    line-height: 1.25;
+  }
+  .upload-copy {
+    margin: 10px 0 0;
+    color: var(--ink-dim);
+    font-size: .88rem;
+    line-height: 1.6;
+  }
+  .ghost-btn {
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 10px 13px;
+    font-family: var(--f-mono);
+    font-size: .8rem;
+    font-weight: 600;
+  }
+  .ghost-btn:hover { border-color: var(--amber-line); background: var(--amber-bg); }
+  .upload-error {
+    margin-top: 12px;
+    min-height: 18px;
+    color: var(--fail);
+    font-family: var(--f-mono);
+    font-size: .78rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+  .brand-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ---- Load-data screen (fetch-based, replaces file upload) ---- */
+  .load-meta {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+  }
+  .load-meta-label {
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .load-meta-value {
+    font-family: var(--f-mono);
+    font-size: .78rem;
+    color: var(--ink-dim);
+    text-align: right;
+  }
+  .refresh-btn {
+    margin-top: 16px;
+    width: 100%;
+    border: 1px solid var(--amber-line);
+    background: var(--amber-bg);
+    color: var(--amber);
+    border-radius: var(--radius-md);
+    padding: 13px;
+    font-family: var(--f-mono);
+    font-size: .85rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+  }
+  .refresh-btn:hover { background: rgba(255, 176, 32, .18); }
+  .refresh-btn:disabled { opacity: .6; cursor: default; }
+  .refresh-btn .spinner {
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    border: 2px solid var(--amber-dim);
+    border-top-color: var(--amber);
+    display: none;
+    flex: 0 0 auto;
+  }
+  .refresh-btn.loading .spinner { display: block; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .refresh-btn-inline {
+    flex: 0 0 auto;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--ink-dim);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .refresh-btn-inline:hover { border-color: var(--amber-line); background: var(--amber-bg); color: var(--amber); }
+  .refresh-btn-inline svg { transition: transform .5s var(--ease); }
+  .refresh-btn-inline.loading svg { animation: spin .7s linear infinite; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%) translateY(12px);
+    max-width: min(92vw, 420px);
+    background: var(--panel-raised);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    font-family: var(--f-mono);
+    font-size: .78rem;
+    padding: 11px 16px;
+    border-radius: 999px;
+    box-shadow: 0 14px 40px rgba(0,0,0,.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s var(--ease), transform .25s var(--ease);
+    z-index: 40;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .toast.ok { border-color: var(--pass-line); }
+  .toast.ok::before { content: "●"; color: var(--pass); margin-right: 8px; }
+  .toast.err { border-color: var(--fail-line); }
+  .toast.err::before { content: "●"; color: var(--fail); margin-right: 8px; }
+  .toast.neutral::before { content: "●"; color: var(--amber); margin-right: 8px; }
+
+
+  /* ============ ROSTER VIEW ============ */
+
+  .hero-band {
+    padding: 22px 18px 18px;
+    background:
+      radial-gradient(120% 100% at 10% 0%, rgba(255,176,32,.07), transparent 55%),
+      var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .brand-mark {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    border: 1.5px solid var(--amber-line);
+    background: var(--amber-bg);
+    color: var(--amber);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: .8rem;
+    flex: 0 0 auto;
+  }
+
+  .brand-word {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: .95rem;
+    letter-spacing: .01em;
+  }
+
+  .brand-eyebrow {
+    font-family: var(--f-mono);
+    font-size: .62rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .live-chip {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--f-mono);
+    font-size: .68rem;
+    color: var(--ink-dim);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    padding: 5px 9px 5px 7px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+  }
+
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 0 0 rgba(255,176,32,.6);
+    animation: pulse 2.2s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,176,32,.55); }
+    70% { box-shadow: 0 0 0 6px rgba(255,176,32,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,176,32,0); }
+  }
+
+  .tl-row {
+    margin-top: 14px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .tl-pill {
+    flex: 0 0 auto;
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--ink-dim);
+    white-space: nowrap;
+  }
+  .tl-pill.active {
+    border-color: var(--amber-line);
+    background: var(--amber-bg);
+    color: var(--amber);
+  }
+
+  .search-wrap {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #000;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 11px 13px;
+  }
+  .search-wrap:focus-within { border-color: var(--amber-line); }
+  .search-prompt {
+    font-family: var(--f-mono);
+    color: var(--amber);
+    font-weight: 700;
+    flex: 0 0 auto;
+  }
+  .search-wrap input {
+    background: none; border: 0; outline: none;
+    color: var(--ink);
+    font-family: var(--f-mono);
+    font-size: .88rem;
+    width: 100%;
+  }
+  .search-wrap input::placeholder { color: var(--ink-faint); }
+
+  .dropdown {
+    margin-top: 14px;
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 11px 13px;
+    color: var(--ink);
+    font-family: var(--f-mono);
+    font-size: .85rem;
+  }
+
+  .roster-helper {
+    padding: 14px 18px 4px;
+    font-size: .78rem;
+    color: var(--ink-faint);
+    font-family: var(--f-mono);
+  }
+
+  .roster-list { padding: 8px 14px 20px; display: grid; gap: 8px; }
+
+  .roster-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 11px 13px 11px 0;
+    text-align: left;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .roster-row .rail {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: var(--line-strong);
+  }
+  .roster-row.pass .rail { background: var(--pass); }
+  .roster-row.fail .rail { background: var(--fail); }
+
+  .roster-avatar {
+    margin-left: 13px;
+    flex: 0 0 auto;
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--panel-raised);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: .78rem;
+    color: var(--ink-dim);
+  }
+
+  .roster-mid { min-width: 0; flex: 1; }
+  .roster-name {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: .93rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .roster-meta {
+    margin-top: 2px;
+    font-family: var(--f-mono);
+    font-size: .7rem;
+    color: var(--ink-faint);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .roster-right { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+  .roster-chev { color: var(--ink-faint); flex: 0 0 auto; }
+
+  .empty-state {
+    margin: 20px 18px;
+    padding: 22px 16px;
+    text-align: center;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-lg);
+    color: var(--ink-faint);
+    font-size: .84rem;
+  }
+
+  /* ============ SCORECARD VIEW ============ */
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 14px;
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    background: rgba(10,12,15,.9);
+    backdrop-filter: blur(8px);
+    z-index: 5;
+  }
+
+  .icon-btn {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-dim);
+    flex: 0 0 auto;
+  }
+
+  .card-header-mid { flex: 1; min-width: 0; text-align: center; }
+  .card-header-mid .h-name {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: .88rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-header-mid .h-sub {
+    font-family: var(--f-mono);
+    font-size: .66rem;
+    color: var(--ink-faint);
+    margin-top: 1px;
+  }
+
+  .id-badge {
+    margin: 14px 14px 0;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    padding: 18px 16px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .id-badge::before {
+    content: "";
+    position: absolute; inset: 0 0 auto 0; height: 3px;
+  }
+  .id-badge.pass::before { background: var(--pass); }
+  .id-badge.fail::before { background: var(--fail); }
+
+  .id-top { display: flex; align-items: center; gap: 13px; }
+  .id-avatar {
+    width: 54px; height: 54px;
+    border-radius: 14px;
+    background: var(--panel-raised);
+    border: 1px solid var(--line-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--ink);
+    flex: 0 0 auto;
+  }
+  .id-name-block { min-width: 0; }
+  .id-name {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 1.12rem;
+    line-height: 1.2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .id-tl {
+    margin-top: 3px;
+    font-size: .78rem;
+    color: var(--ink-dim);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .id-bottom {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .id-hrid {
+    font-family: var(--f-mono);
+    font-size: .74rem;
+    color: var(--ink-dim);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 5px 9px;
+    letter-spacing: .03em;
+  }
+  .id-hrid b { color: var(--ink); font-weight: 600; }
+
+  .segtabs {
+    margin: 16px 14px 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    gap: 2px;
+  }
+  .segtab {
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    padding: 8px 4px;
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--ink-faint);
+    font-family: var(--f-body);
+    letter-spacing: .01em;
+  }
+  .segtab.active {
+    background: var(--panel-raised);
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+
+  .panel-content { padding: 16px 14px 10px; }
+
+  .panel-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 2px 2px 12px;
+    gap: 10px;
+  }
+  .panel-title h2 {
+    margin: 0;
+    font-family: var(--f-display);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .panel-title .sub {
+    font-size: .72rem;
+    color: var(--ink-faint);
+    text-align: right;
+    font-family: var(--f-mono);
+  }
+
+  .tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+  }
+
+  .tile {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 12px 13px 13px;
+    position: relative;
+    overflow: hidden;
+  }
+  .tile::before {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 0; height: 3px;
+    background: var(--line-strong);
+  }
+  .tile.pass::before { background: var(--pass); }
+  .tile.fail::before { background: var(--fail); }
+  .tile.wide { grid-column: 1 / -1; }
+
+  .tile-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .tile-label {
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .led {
+    width: 7px; height: 7px; border-radius: 50%;
+    flex: 0 0 auto;
+    background: var(--line-strong);
+  }
+  .led.pass { background: var(--pass); box-shadow: 0 0 6px 0 rgba(41,212,139,.65); }
+  .led.fail { background: var(--fail); box-shadow: 0 0 6px 0 rgba(255,77,94,.65); }
+
+  .tile-value {
+    margin-top: 8px;
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 1.42rem;
+    letter-spacing: -.01em;
+    line-height: 1;
+  }
+  .tile-value.pass { color: var(--pass); }
+  .tile-value.fail { color: var(--fail); }
+
+  .tile-foot {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .tile-sub {
+    font-size: .68rem;
+    color: var(--ink-faint);
+    line-height: 1.3;
+  }
+
+  .red-kpi-list {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .red-kpi {
+    font-family: var(--f-mono);
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--fail-bg);
+    color: var(--fail);
+    border: 1px solid var(--fail-line);
+    white-space: nowrap;
+  }
+  .red-kpi.empty {
+    background: transparent;
+    color: var(--ink-faint);
+    border: 1px dashed var(--line);
+  }
+
+  .delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .68rem;
+    font-weight: 700;
+    font-family: var(--f-mono);
+    padding: 3px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+  .delta.good { background: var(--pass-bg); color: var(--pass); }
+  .delta.bad { background: var(--fail-bg); color: var(--fail); }
+  .delta.flat { background: var(--panel-2); color: var(--ink-faint); border: 1px solid var(--line); }
+
+  .split-two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .split-two .split-label {
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .split-two .split-value {
+    margin-top: 5px;
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+
+  /* Performance ledger rows */
+  .ledger { display: grid; gap: 8px; }
+  .ledger-row {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 11px 13px 11px 12px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+  }
+  .ledger-row .rail {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--line-strong);
+  }
+  .ledger-row.pass .rail { background: var(--pass); }
+  .ledger-row.fail .rail { background: var(--fail); }
+  .ledger-main { flex: 1; min-width: 0; margin-left: 5px; }
+  .ledger-label {
+    font-family: var(--f-mono);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: var(--ink);
+  }
+  .ledger-sub { font-size: .7rem; color: var(--ink-faint); margin-top: 2px; }
+  .ledger-right { flex: 0 0 auto; text-align: right; display: grid; gap: 4px; justify-items: end; }
+  .ledger-value {
+    font-family: var(--f-mono);
+    font-weight: 700;
+    font-size: 1.02rem;
+  }
+  .ledger-value.pass { color: var(--pass); }
+  .ledger-value.fail { color: var(--fail); }
+
+  /* Accordions (Quality + RTM) */
+  .accordion {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .accordion .rail {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--line-strong);
+  }
+  .accordion.fail .rail { background: var(--fail); }
+  .accordion.pass .rail { background: var(--pass); }
+
+  .acc-head {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    color: var(--ink);
+    padding: 13px 13px 13px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+  }
+  .acc-title { min-width: 0; flex: 1; }
+  .acc-name {
+    font-family: var(--f-display);
+    font-size: .9rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .acc-meta {
+    margin-top: 3px;
+    color: var(--ink-faint);
+    font-size: .72rem;
+    font-family: var(--f-mono);
+  }
+
+  .tag {
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    color: var(--ink-dim);
+    font-size: .64rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    font-family: var(--f-mono);
+    border: 1px solid var(--line);
+    flex: 0 0 auto;
+  }
+  .tag.fail { background: var(--fail-bg); color: var(--fail); border-color: var(--fail-line); }
+  .tag.pass { background: var(--pass-bg); color: var(--pass); border-color: var(--pass-line); }
+
+  .chev {
+    width: 16px; height: 16px;
+    color: var(--ink-faint);
+    flex: 0 0 auto;
+    transition: transform .2s var(--ease);
+  }
+  .accordion.open .chev { transform: rotate(180deg); }
+
+  .acc-body { max-height: 0; overflow: hidden; transition: max-height .25s var(--ease); }
+  .accordion.open .acc-body { max-height: 900px; }
+  .acc-body-inner { padding: 0 13px 13px 16px; }
+
+  .rtm-pills {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .rtm-pill {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+  }
+  .rtm-pill span {
+    font-size: .62rem; font-weight: 700; color: var(--ink-faint);
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .rtm-pill strong {
+    color: var(--ink);
+    font-family: var(--f-mono);
+    font-size: .88rem;
+  }
+
+  .detail-row {
+    display: flex; justify-content: space-between; gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid var(--line-soft);
+    font-size: .8rem;
+  }
+  .detail-row:first-child { border-top: 0; }
+  .detail-row .d-left { color: var(--ink-dim); font-family: var(--f-mono); font-size: .74rem; }
+  .detail-row .d-right { font-family: var(--f-mono); font-weight: 700; flex: 0 0 auto; }
+
+  .footer-space { height: 6px; }
+</style>
+</head>
+<body>
+
+  <section id="upload-view" class="view active">
+    <div class="upload-wrap">
+      <div class="upload-card">
+        <div class="upload-kicker">Mystro viewer</div>
+        <h1 class="upload-title">Load the latest report</h1>
+        <p class="upload-copy">Tap refresh to pull the current snapshot from <code>MiniMystro.json</code>, published alongside this page.</p>
+
+        <div class="load-meta hidden" id="load-meta">
+          <span class="load-meta-label">Last loaded</span>
+          <span class="load-meta-value" id="load-meta-value">—</span>
+        </div>
+
+        <button class="refresh-btn" id="refresh-btn" type="button">
+          <span class="spinner"></span>
+          <span id="refresh-btn-label">Refresh</span>
+        </button>
+
+        <div class="upload-error" id="upload-error" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="shell">
+
+    <section id="roster-view" class="view">
+      <div class="hero-band">
+        <div class="brand-row">
+          <div class="brand">
+            <div class="brand-mark">M</div>
+            <div>
+              <div class="brand-word">Mystro</div>
+              <div class="brand-eyebrow">Ops Roster</div>
+            </div>
+          </div>
+          <div class="brand-actions">
+            <div class="live-chip"><span class="live-dot"></span><span id="snapshot-date">—</span></div>
+            <button class="refresh-btn-inline" id="refresh-btn-inline" type="button" aria-label="Refresh data">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="tl-row hidden" id="tl-row"></div>
+
+        <div class="search-wrap">
+          <span class="search-prompt">&gt;</span>
+          <input id="agent-search" type="search" placeholder="search agent name or HRID" autocomplete="off" />
+        </div>
+        <select id="agent-dropdown" class="dropdown hidden" aria-label="Select agent"></select>
+      </div>
+
+      <div class="roster-helper" id="roster-helper">Tap an agent to open the scorecard.</div>
+      <div id="roster-list" class="roster-list"></div>
+      <div id="roster-empty" class="empty-state hidden">No agents match this filter.</div>
+    </section>
+
+    <section id="scorecard-view" class="view">
+      <div class="card-header">
+        <button class="icon-btn" id="back-btn" aria-label="Back to roster">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        </button>
+        <div class="card-header-mid">
+          <div class="h-name" id="h-name">Agent</div>
+          <div class="h-sub" id="h-sub">—</div>
+        </div>
+        <button class="icon-btn" id="change-btn" aria-label="Change agent">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+      </div>
+
+      <div class="id-badge" id="id-badge">
+        <div class="id-top">
+          <div class="id-avatar" id="id-avatar">AA</div>
+          <div class="id-name-block">
+            <div class="id-name" id="id-name">Agent name</div>
+            <div class="id-tl" id="id-tl">TL —</div>
+          </div>
+        </div>
+        <div class="id-bottom">
+          <div class="id-hrid">HRID <b id="id-hrid">—</b></div>
+        </div>
+      </div>
+
+      <div class="segtabs">
+        <button class="segtab active" data-tab="0">Overview</button>
+        <button class="segtab" data-tab="1">Performance</button>
+        <button class="segtab" data-tab="2">Quality</button>
+        <button class="segtab" data-tab="3">RTM</button>
+      </div>
+
+      <div id="tab-0" class="panel-content">
+        <div class="panel-title"><h2>MTD overview</h2><span class="sub" id="overview-days-sub">—</span></div>
+        <div id="overview-container" class="tiles"></div>
+      </div>
+
+      <div id="tab-1" class="panel-content hidden">
+        <div class="panel-title"><h2>Performance</h2><span class="sub">MTD vs previous day</span></div>
+        <div id="performance-container" class="ledger"></div>
+      </div>
+
+      <div id="tab-2" class="panel-content hidden">
+        <div class="panel-title"><h2>Quality</h2><span class="sub">PW / DMCA / QA</span></div>
+        <div id="quality-container"></div>
+      </div>
+
+      <div id="tab-3" class="panel-content hidden">
+        <div class="panel-title"><h2>RTM</h2><span class="sub">Any count &gt; 0 is flagged</span></div>
+        <div id="rtm-container"></div>
+      </div>
+
+      <div class="footer-space"></div>
+    </section>
+
+  </div>
+
+<script>
+window.MYSTRO_DATA = null;
+</script>
+<script>
+(function () {
+  "use strict";
+
+
+  const state = {
+    selectedHrid: null,
+    tlFilter: "ALL",
+    agents: [],
+    daily: [],
+    fromDate: "",
+    toDate: "",
+    rangeLabel: "—"
+  };
+
+  let byAgent = {};
+  let listenersBound = false;
+
+  function setData(data) {
+    state.selectedHrid = null;
+    state.tlFilter = "ALL";
+    state.agents = Array.isArray(data?.mtd) ? [...data.mtd] : [];
+    state.daily = Array.isArray(data?.daily) ? [...data.daily] : [];
+
+    const meta = data?.meta || {};
+    const derivedDates = state.daily
+      .map(row => parseAnyDate(row?.Date))
+      .filter(Boolean)
+      .sort((a, b) => a.getTime() - b.getTime());
+    const firstDaily = derivedDates[0] || null;
+    const lastDaily = derivedDates[derivedDates.length - 1] || null;
+
+    state.fromDate = meta.fromDate || meta.startDate || meta.dateFrom || (firstDaily ? formatDateLabel(firstDaily) : meta.date || "");
+    state.toDate = meta.toDate || meta.endDate || meta.dateTo || (lastDaily ? formatDateLabel(lastDaily) : state.fromDate);
+    state.rangeLabel = formatRangeLabel(state.fromDate, state.toDate);
+
+    byAgent = state.daily.reduce((acc, row) => {
+      (acc[row.HRID] ??= []).push(row);
+      return acc;
+    }, {});
+  }
+
+  setData(window.MYSTRO_DATA || {});
+
+  const el = (id) => document.getElementById(id);
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return "";
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  const safeNum = (v) => (v === null || v === undefined || v === "" || Number.isNaN(Number(v))) ? null : Number(v);
+  const fmtNum = (v, digits = 0) => { const n = safeNum(v); return n === null ? "—" : n.toFixed(digits); };
+  const fmtPct = (v, digits = 1) => { const n = safeNum(v); return n === null ? "—" : (n * 100).toFixed(digits) + "%"; };
+  const fmtSec = (v) => { const n = safeNum(v); return n === null ? "—" : n.toFixed(0) + "s"; };
+  const initials = (name) => (name || "?").split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+  const displayName = (agent) => agent?.FullName || agent?.BPID || agent?.HRID || "Agent";
+
+  function parseAnyDate(value) {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+    const raw = String(value).trim();
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+    const m = raw.match(/^(\d{1,2})[\/\-](\w{3,9})[\/\-](\d{2,4})$/);
+    if (m) {
+      const day = Number(m[1]);
+      const monthMap = { jan:0, january:0, feb:1, february:1, mar:2, march:2, apr:3, april:3, may:4, jun:5, june:5, jul:6, july:6, aug:7, august:7, sep:8, sept:8, september:8, oct:9, october:9, nov:10, november:10, dec:11, december:11 };
+      const month = monthMap[m[2].toLowerCase()];
+      let year = Number(m[3]);
+      if (year < 100) year += 2000;
+      if (month !== undefined) {
+        const d = new Date(year, month, day);
+        if (!Number.isNaN(d.getTime())) return d;
+      }
+    }
+    return null;
+  }
+  function formatDateLabel(value) {
+    const d = parseAnyDate(value);
+    if (!d) return String(value || "—");
+    const day = String(d.getDate()).padStart(2, "0");
+    const mon = d.toLocaleString("en-US", { month: "short" });
+    const year = String(d.getFullYear()).slice(-2);
+    return `${day}/${mon}/${year}`;
+  }
+  function formatRangeLabel(fromDate, toDate) {
+    if (!fromDate && !toDate) return "—";
+    const from = formatDateLabel(fromDate);
+    const to = formatDateLabel(toDate);
+    return `${from} → ${to}`;
+  }
+
+  // Human-readable duration for RTM figures, which are stored in seconds.
+  function fmtDuration(v) {
+    const n = safeNum(v);
+    if (n === null) return "—";
+    const sec = Math.round(n);
+    if (sec <= 0) return "0s";
+    if (sec < 60) return `${sec}s`;
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    if (h > 0) return m > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${h}h`;
+    return `${m}m`;
+  }
+
+  // Lower-of / higher-of pairs, used wherever the sheet reports two candidate
+  // figures (AHT vs In-AHT, AICR vs AICR2) and the scorecard should surface
+  // whichever one is the operative (better) figure.
+  function lowerOf(a, b) {
+    const na = safeNum(a), nb = safeNum(b);
+    if (na === null && nb === null) return { value: null, key: null };
+    if (na === null) return { value: nb, key: "In-AHT" === undefined ? null : "b" };
+    if (nb === null) return { value: na, key: "a" };
+    return na <= nb ? { value: na, key: "a" } : { value: nb, key: "b" };
+  }
+  function higherOf(a, b) {
+    const na = safeNum(a), nb = safeNum(b);
+    if (na === null && nb === null) return { value: null, key: null };
+    if (na === null) return { value: nb, key: "b" };
+    if (nb === null) return { value: na, key: "a" };
+    return na >= nb ? { value: na, key: "a" } : { value: nb, key: "b" };
+  }
+
+  // ---- KPI status thresholds: single source of truth ----------------------
+  //   AHT / In-AHT (lower of the two) <= 650s   -> pass, else fail
+  //   ABS                              <  6%     -> pass, else fail
+  //   ADH                              >= 95%    -> pass, else fail
+  //   QA                               >= 95%    -> pass, else fail
+  //   AICR / AICR2 (higher of the two) >= 55%    -> pass, else fail
+  //   XFR                               < 30%     -> pass, else fail (legacy, no fail color if absent)
+  //   SLA                              == 100%    -> pass, else fail
+  //   RTM category                    count > 0  -> flagged, else clear
+  // Binary pass/fail only — no middle tier, since none was specified.
+  function statusFor(metric, val) {
+    const n = safeNum(val);
+    if (n === null) return null;
+    if (metric === "AHT" || metric === "In-AHT" || metric === "AHT_LOW") return n <= 650 ? "pass" : "fail";
+    if (metric === "ABS") return n < 0.06 ? "pass" : "fail";
+    if (metric === "ADH") return n >= 0.95 ? "pass" : "fail";
+    if (metric === "QA") return n >= 0.95 ? "pass" : "fail";
+    if (metric === "AICR" || metric === "AICR2" || metric === "AICR_HIGH") return n >= 0.55 ? "pass" : "fail";
+    if (metric === "XFR") return n < 0.30 ? "pass" : "fail";
+    if (metric === "SLA") return n >= 1 ? "pass" : "fail";
+    return null;
+  }
+  function valueClass(metric, val) {
+    const s = statusFor(metric, val);
+    return s === "pass" ? "pass" : s === "fail" ? "fail" : "";
+  }
+  function rtmStatus(counter) {
+    const n = safeNum(counter);
+    return (n !== null && n > 0) ? "fail" : "pass";
+  }
+
+  // Overall roster / scorecard status: worst-of across every metric the
+  // person asked us to score on. AHT and SLA are included here (unlike the
+  // earlier snapshot build) because they are explicit pass/fail rules.
+  function coreStatus(agent) {
+    const aht = lowerOf(agent.AHT, agent["In-AHT"]).value;
+    const aicr = higherOf(agent.AICR, agent.AICR2).value;
+    const checks = [
+      statusFor("AHT_LOW", aht),
+      statusFor("AICR_HIGH", aicr),
+      statusFor("ABS", agent.ABS),
+      statusFor("ADH", agent.ADH),
+      statusFor("QA", agent.QA),
+      statusFor("SLA", agent.SLA)
+    ].filter(Boolean);
+    if (!checks.length) return "pass";
+    return checks.some(s => s === "fail") ? "fail" : "pass";
+  }
+
+  function compareDelta(current, previous, formatter, higherIsBetter) {
+    const c = safeNum(current);
+    const p = safeNum(previous);
+    if (c === null || p === null) return `<span class="delta flat">steady —</span>`;
+    const d = c - p;
+    if (Math.abs(d) < 0.0001) return `<span class="delta flat">steady</span>`;
+    const rose = d > 0;
+    const improved = higherIsBetter === undefined ? null : (rose === higherIsBetter);
+    const symbol = rose ? "▲" : "▼";
+    const cls = improved === null ? "flat" : (improved ? "good" : "bad");
+    return `<span class="delta ${cls}">${symbol} ${formatter(Math.abs(d))}</span>`;
+  }
+
+  function sortedRows(hrid) {
+    return (byAgent[hrid] || []).slice().sort((a, b) => String(a.Date).localeCompare(String(b.Date)));
+  }
+
+  function ratioForRows(rows, numKey, denKey) {
+    let num = 0, den = 0;
+    rows.forEach(r => { num += safeNum(r[numKey]) || 0; den += safeNum(r[denKey]) || 0; });
+    return den ? num / den : null;
+  }
+
+  // Average per day is computed from the number of daily rows that actually
+  // carry a value for that field, not the sheet's "MTD Days" column (which
+  // is 0 for every agent in this export and would otherwise silently break
+  // the average into a raw total).
+  function avgPerDay(hrid, key) {
+    const rows = byAgent[hrid] || [];
+    let total = 0, count = 0;
+    rows.forEach(r => { const n = safeNum(r[key]); if (n !== null) { total += n; count++; } });
+    return { value: count ? total / count : null, days: count };
+  }
+
+  function previousKpiValues(agent) {
+    const rows = sortedRows(agent.HRID);
+    if (rows.length < 2) return {};
+    const prevRows = rows.slice(0, -1);
+    const avg = (key) => {
+      const vals = prevRows.map(r => safeNum(r[key])).filter(v => v !== null);
+      return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
+    };
+    const last = prevRows[prevRows.length - 1] || {};
+    return {
+      AHT: avg("AHT"),
+      "In-AHT": avg("In-AHT"),
+      AICR: ratioForRows(prevRows, "AICR Repeats", "AICR Received"),
+      AICR2: ratioForRows(prevRows, "AICR2 Failures", "AICR2 Calls"),
+      ABS: safeNum(last.ABS),
+      ADH: safeNum(last.ADH),
+      QA: safeNum(last.QA)
+    };
+  }
+
+  function overviewRedKpis(agent) {
+    const aht = lowerOf(agent.AHT, agent["In-AHT"]).value;
+    const aicr = higherOf(agent.AICR, agent.AICR2).value;
+    const checks = [
+      ["AICR", statusFor("AICR_HIGH", aicr)],
+      ["AHT", statusFor("AHT_LOW", aht)],
+      ["ABS", statusFor("ABS", agent.ABS)],
+      ["ADH", statusFor("ADH", agent.ADH)],
+      ["QA", statusFor("QA", agent.QA)],
+      ["SLA", statusFor("SLA", agent.SLA)]
+    ];
+    return checks.filter(([, status]) => status === "fail").map(([label]) => label);
+  }
+
+  // ============ ROSTER ============
+
+  function uniqueTLs() {
+    return [...new Set(state.agents.map(a => a.TL).filter(Boolean))];
+  }
+
+  function filteredAgents() {
+    const term = (el("agent-search")?.value || "").trim().toLowerCase();
+    return state.agents.filter(a => {
+      const matchesTL = state.tlFilter === "ALL" || a.TL === state.tlFilter;
+      if (!matchesTL) return false;
+      if (!term) return true;
+      const name = displayName(a).toLowerCase();
+      const hrid = String(a.HRID || "").toLowerCase();
+      const bpid = String(a.BPID || "").toLowerCase();
+      return name.includes(term) || hrid.includes(term) || bpid.includes(term);
+    });
+  }
+
+  function renderTLRow() {
+    const tls = uniqueTLs();
+    const row = el("tl-row");
+    if (tls.length <= 1) { row.classList.add("hidden"); row.innerHTML = ""; return; }
+    row.classList.remove("hidden");
+    const pills = ["ALL", ...tls];
+    row.innerHTML = pills.map(tl => {
+      const label = tl === "ALL" ? "All teams" : tl;
+      const active = state.tlFilter === tl ? "active" : "";
+      return `<button type="button" class="tl-pill ${active}" data-tl="${escapeHtml(tl)}">${escapeHtml(label)}</button>`;
+    }).join("");
+    row.querySelectorAll(".tl-pill").forEach(btn => {
+      btn.addEventListener("click", () => { state.tlFilter = btn.dataset.tl; renderRoster(); });
+    });
+  }
+
+  function renderRosterList() {
+    const list = filteredAgents();
+
+    const container = el("roster-list");
+    const empty = el("roster-empty");
+    const helper = el("roster-helper");
+    const dropdown = el("agent-dropdown");
+    const search = el("agent-search");
+
+    if (!state.agents.length) {
+      container.innerHTML = "";
+      empty.classList.remove("hidden");
+      empty.textContent = "No agents are available in the current snapshot.";
+      helper.textContent = "";
+      return;
+    }
+
+    if (!list.length) {
+      container.innerHTML = "";
+      dropdown.innerHTML = "";
+      empty.classList.remove("hidden");
+      empty.textContent = "No agents match this filter.";
+      return;
+    }
+    empty.classList.add("hidden");
+
+    const ordered = list.slice().sort((a, b) => displayName(a).localeCompare(displayName(b)));
+
+    if (state.agents.length > 20) {
+      search.parentElement.classList.remove("hidden");
+      dropdown.classList.remove("hidden");
+      container.classList.add("hidden");
+      helper.textContent = "Search, then pick an agent from the list below.";
+      dropdown.innerHTML = [
+        `<option value="">Select agent…</option>`,
+        ...ordered.map(a => `<option value="${escapeHtml(a.HRID)}">${escapeHtml(displayName(a))} · ${escapeHtml(a.HRID)}</option>`)
+      ].join("");
+      dropdown.onchange = (e) => { if (e.target.value) selectAgent(e.target.value); };
+    } else {
+      dropdown.classList.add("hidden");
+      container.classList.remove("hidden");
+      helper.textContent = "Tap an agent to open the scorecard.";
+      container.innerHTML = ordered.map(a => {
+        const name = displayName(a);
+        const status = coreStatus(a);
+        const redKpis = overviewRedKpis(a);
+        const redKpisHtml = redKpis.length
+          ? `<span class="roster-red-kpis">${redKpis.map(kpi => `<span class="red-kpi">${escapeHtml(kpi)}</span>`).join("")}</span>`
+          : "";
+        return `
+          <button type="button" class="roster-row ${status}" data-hrid="${escapeHtml(a.HRID)}">
+            <span class="rail"></span>
+            <span class="roster-avatar">${escapeHtml(initials(name))}</span>
+            <span class="roster-mid">
+              <div class="roster-name">${escapeHtml(name)}</div>
+              <div class="roster-meta">${escapeHtml(a.HRID || "—")} · TL ${escapeHtml(a.TL || "Unassigned")}</div>
+              ${redKpisHtml}
+            </span>
+            <span class="roster-right">
+              <svg class="roster-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </span>
+          </button>
+        `;
+      }).join("");
+      container.querySelectorAll(".roster-row").forEach(btn => {
+        btn.addEventListener("click", () => selectAgent(btn.dataset.hrid));
+      });
+    }
+  }
+
+  function renderRoster() {
+    el("snapshot-date").textContent = state.rangeLabel;
+    renderTLRow();
+    renderRosterList();
+  }
+
+  function showRoster() {
+    el("upload-view")?.classList.remove("active");
+    el("roster-view").classList.add("active");
+    el("scorecard-view").classList.remove("active");
+    window.scrollTo(0, 0);
+  }
+
+  function showScorecard() {
+    el("upload-view")?.classList.remove("active");
+    el("roster-view").classList.remove("active");
+    el("scorecard-view").classList.add("active");
+    switchTab(0);
+    window.scrollTo(0, 0);
+  }
+
+  function switchTab(index) {
+    document.querySelectorAll(".segtab").forEach((btn, i) => btn.classList.toggle("active", i === index));
+    for (let i = 0; i < 4; i++) {
+      const t = el(`tab-${i}`);
+      if (t) t.classList.toggle("hidden", i !== index);
+    }
+  }
+
+  // ============ SCORECARD ============
+
+  function selectAgent(hrid) {
+    const agent = state.agents.find(a => String(a.HRID) === String(hrid));
+    if (!agent) return;
+    state.selectedHrid = String(hrid);
+
+    const name = displayName(agent);
+    const status = coreStatus(agent);
+
+    el("h-name").textContent = name;
+    el("h-sub").textContent = `HRID ${agent.HRID || "—"}`;
+    el("id-avatar").textContent = initials(name);
+    el("id-name").textContent = name;
+    el("id-tl").textContent = `TL ${agent.TL || "Unassigned"}`;
+    el("id-hrid").textContent = agent.HRID || "—";
+    el("id-badge").className = `id-badge ${status}`;
+
+    renderOverview(agent);
+    renderPerformance(agent);
+    renderQuality(agent.HRID);
+    renderRTM(agent);
+
+    showScorecard();
+  }
+
+  function renderOverview(agent) {
+    const aht = lowerOf(agent.AHT, agent["In-AHT"]);
+    const aicr = higherOf(agent.AICR, agent.AICR2);
+    const prev = previousKpiValues(agent);
+    const prevAht = lowerOf(prev.AHT, prev["In-AHT"]).value;
+    const prevAicr = higherOf(prev.AICR, prev.AICR2).value;
+
+    const callsAvg = avgPerDay(agent.HRID, "Calls");
+    const inboundAvg = avgPerDay(agent.HRID, "Total Inbound");
+    el("overview-days-sub").textContent = `${callsAvg.days || inboundAvg.days || 0} logged day${(callsAvg.days || inboundAvg.days) === 1 ? "" : "s"}`;
+
+    const redKpis = overviewRedKpis(agent);
+    const redTile = `
+      <div class="tile wide">
+        <div class="tile-head">
+          <div class="tile-label">Red KPIs</div>
+          <div class="led ${redKpis.length ? "fail" : "pass"}"></div>
+        </div>
+        <div class="red-kpi-list">
+          ${redKpis.length ? redKpis.map(kpi => `<span class="red-kpi">${escapeHtml(kpi)}</span>`).join("") : `<span class="red-kpi empty">None</span>`}
+        </div>
+        <div class="tile-foot">
+          <div class="tile-sub">Overview KPIs only</div>
+        </div>
+      </div>
+    `;
+
+    const tiles = [
+      {
+        key: "AICR_HIGH", label: "MTD AICR", value: fmtPct(aicr.value, 1), raw: aicr.value,
+        sub: aicr.key === "a" ? "Best figure: AICR" : aicr.key === "b" ? "Best figure: AICR2" : "No data yet",
+        delta: compareDelta(aicr.value, prevAicr, (v) => fmtPct(v, 1), true)
+      },
+      {
+        key: "AHT_LOW", label: "MTD AHT", value: fmtSec(aht.value), raw: aht.value,
+        sub: aht.key === "a" ? "Best figure: AHT" : aht.key === "b" ? "Best figure: In-AHT" : "No data yet",
+        delta: compareDelta(aht.value, prevAht, (v) => fmtSec(v), false)
+      },
+      {
+        key: "ABS", label: "MTD ABS", value: fmtPct(agent.ABS, 1), raw: agent.ABS,
+        sub: "Absenteeism rate", delta: compareDelta(agent.ABS, prev.ABS, (v) => fmtPct(v, 1), false)
+      },
+      {
+        key: "ADH", label: "MTD ADH", value: fmtPct(agent.ADH, 1), raw: agent.ADH,
+        sub: "Adherence to schedule", delta: compareDelta(agent.ADH, prev.ADH, (v) => fmtPct(v, 1), true)
+      },
+      {
+        key: "QA", label: "MTD QA", value: fmtPct(agent.QA, 1), raw: agent.QA,
+        sub: "Quality audit score", delta: compareDelta(agent.QA, prev.QA, (v) => fmtPct(v, 1), true)
+      },
+      {
+        key: "SLA", label: "MTD SLA", value: fmtPct(agent.SLA, 0), raw: agent.SLA,
+        sub: `${fmtNum(agent["Ticket Count"], 0)} ticket${safeNum(agent["Ticket Count"]) === 1 ? "" : "s"}`, delta: null
+      }
+    ];
+
+    const tilesHtml = tiles.map(t => {
+      const status = t.raw === null ? null : statusFor(t.key, t.raw);
+      const cardCls = status || "";
+      const ledCls = status || "";
+      return `
+        <div class="tile ${cardCls}">
+          <div class="tile-head">
+            <div class="tile-label">${t.label}</div>
+            <div class="led ${ledCls}"></div>
+          </div>
+          <div class="tile-value ${status || ""}">${t.value}</div>
+          <div class="tile-foot">
+            <div class="tile-sub">${t.sub}</div>
+            ${t.delta || ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    const avgTile = `
+      <div class="tile wide">
+        <div class="tile-head"><div class="tile-label">Avg. volume per logged day</div><div class="led"></div></div>
+        <div class="split-two">
+          <div>
+            <div class="split-label">Calls / day</div>
+            <div class="split-value">${callsAvg.value === null ? "—" : callsAvg.value.toFixed(1)}</div>
+          </div>
+          <div>
+            <div class="split-label">Total inbound / day</div>
+            <div class="split-value">${inboundAvg.value === null ? "—" : inboundAvg.value.toFixed(1)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    el("overview-container").innerHTML = redTile + tilesHtml + avgTile;
+  }
+
+  function renderPerformance(agent) {
+    const prev = previousKpiValues(agent);
+    // Exact sheet column names are used as labels here, per the source MTD /
+    // KPI's sheets, rather than friendlier renamed copy.
+    const items = [
+      { key: "AICR2", label: "AICR2", value: agent.AICR2, prev: prev.AICR2, fmt: (v) => fmtPct(v, 1), higher: true, sub: "Failure rate vs. AICR2 calls" },
+      { key: "AICR", label: "AICR", value: agent.AICR, prev: prev.AICR, fmt: (v) => fmtPct(v, 1), higher: true, sub: "Repeat rate vs. AICR received" },
+      { key: "AHT", label: "AHT", value: agent.AHT, prev: prev.AHT, fmt: (v) => fmtSec(v), higher: false, sub: "Average handle time" },
+      { key: "In-AHT", label: "In-AHT", value: agent["In-AHT"], prev: prev["In-AHT"], fmt: (v) => fmtSec(v), higher: false, sub: "Inbound average handle time" },
+      { key: "ABS", label: "ABS", value: agent.ABS, prev: prev.ABS, fmt: (v) => fmtPct(v, 1), higher: false, sub: "Absence rate" },
+      { key: "ADH", label: "ADH", value: agent.ADH, prev: prev.ADH, fmt: (v) => fmtPct(v, 1), higher: true, sub: "Adherence rate" },
+      { key: "QA", label: "QA", value: agent.QA, prev: prev.QA, fmt: (v) => fmtPct(v, 1), higher: true, sub: "Audit score" },
+      { key: "XFR", label: "XFR", value: agent.XFR, prev: null, fmt: (v) => fmtPct(v, 1), higher: false, sub: "Transfer rate" },
+      { key: "SLA", label: "SLA", value: agent.SLA, prev: null, fmt: (v) => fmtPct(v, 0), higher: true, sub: "Target attainment" }
+    ];
+
+    el("performance-container").innerHTML = items.map(i => {
+      const status = statusFor(i.key, i.value);
+      const rowCls = status || "";
+      return `
+        <div class="ledger-row ${rowCls}">
+          <span class="rail"></span>
+          <div class="ledger-main">
+            <div class="ledger-label">${i.label}</div>
+            <div class="ledger-sub">${i.sub}</div>
+          </div>
+          <div class="ledger-right">
+            <div class="ledger-value ${status || ""}">${i.fmt(i.value)}</div>
+            ${compareDelta(i.value, i.prev, i.fmt, i.higher)}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function groupQuality(agentHrid) {
+    const rows = byAgent[agentHrid] || [];
+    const groups = [
+      { key: "PW", title: "PW", items: [] },
+      { key: "DMCA", title: "DMCA", items: [] },
+      { key: "QA", title: "QA", items: [] }
+    ];
+    rows.forEach(r => {
+      if (r.PW !== null && r.PW !== undefined && r.PW !== "") groups[0].items.push({ date: r.Date, value: r.PW });
+      if (r.DMCA !== null && r.DMCA !== undefined && r.DMCA !== "") groups[1].items.push({ date: r.Date, value: r.DMCA });
+      if (r.QA !== null && r.QA !== undefined && r.QA !== "") groups[2].items.push({ date: r.Date, value: r.QA });
+    });
+    return groups.filter(g => g.items.length);
+  }
+
+  function renderQuality(agentHrid) {
+    const groups = groupQuality(agentHrid);
+    const box = el("quality-container");
+    if (!groups.length) {
+      box.innerHTML = `<div class="empty-state">No PW, DMCA, or QA findings recorded for this agent in the current snapshot.</div>`;
+      return;
+    }
+    box.innerHTML = groups.map((g, idx) => {
+      const rows = g.items.map(item => `
+        <div class="detail-row">
+          <div class="d-left">${escapeHtml(item.date)}</div>
+          <div class="d-right ${valueClass("QA", item.value)}">${fmtPct(item.value, 1)}</div>
+        </div>
+      `).join("");
+      return `
+        <div class="accordion ${idx === 0 ? "open" : ""}">
+          <span class="rail"></span>
+          <button class="acc-head" type="button" onclick="this.parentElement.classList.toggle('open')">
+            <div class="acc-title">
+              <div class="acc-name">${g.title}</div>
+              <div class="acc-meta">${g.items.length} record${g.items.length === 1 ? "" : "s"}</div>
+            </div>
+            <span class="tag">${g.items.length}</span>
+            <svg class="chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="acc-body"><div class="acc-body-inner">${rows}</div></div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderRTM(agent) {
+    const rows = byAgent[agent.HRID] || [];
+    const metrics = [
+      { key: "SysProb", label: "System problems" },
+      { key: "Break", label: "Breaks" },
+      { key: "Lunch", label: "Lunch" },
+      { key: "Personal", label: "Personal" },
+      { key: "Lateness", label: "Lateness" },
+      { key: "UnderTime", label: "Under time" }
+    ];
+
+    const box = el("rtm-container");
+    if (!rows.length) {
+      box.innerHTML = `<div class="empty-state">No RTM data found for this agent.</div>`;
+      return;
+    }
+
+    box.innerHTML = metrics.map((m, idx) => {
+      const totalDuration = fmtDuration(agent[m.key]);
+      const totalCount = fmtNum(agent[`${m.key} Counter`], 0);
+      const status = rtmStatus(agent[`${m.key} Counter`]);
+
+      const detailRows = rows
+        .filter(r => safeNum(r[`${m.key} Counter`]) === 1)
+        .map(r => `
+          <div class="detail-row">
+            <div class="d-left">${escapeHtml(r.Date)}</div>
+            <div class="d-right">${fmtDuration(r[m.key])}</div>
+          </div>
+        `);
+
+      const body = detailRows.length
+        ? detailRows.join("")
+        : `<div class="detail-row"><div class="d-left">No day with counter = 1</div><div class="d-right">—</div></div>`;
+
+      return `
+        <div class="accordion ${status} ${idx === 0 ? "open" : ""}">
+          <span class="rail"></span>
+          <button class="acc-head" type="button" onclick="this.parentElement.classList.toggle('open')">
+            <div class="acc-title">
+              <div class="acc-name">${m.label}</div>
+              <div class="acc-meta">${totalDuration} total · ${totalCount} count</div>
+            </div>
+            <span class="tag ${status}">${status === "fail" ? "Flagged" : "Clear"}</span>
+            <svg class="chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="acc-body">
+            <div class="acc-body-inner">
+              <div class="rtm-pills">
+                <div class="rtm-pill"><span>Total duration</span><strong>${totalDuration}</strong></div>
+                <div class="rtm-pill"><span>Total count</span><strong>${totalCount}</strong></div>
+              </div>
+              ${body}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function init() {
+    renderRoster();
+    if (listenersBound) return;
+    listenersBound = true;
+    el("agent-search").addEventListener("input", renderRosterList);
+    el("back-btn").addEventListener("click", showRoster);
+    el("change-btn").addEventListener("click", showRoster);
+    document.querySelectorAll(".segtab").forEach((btn, i) => btn.addEventListener("click", () => switchTab(i)));
+  }
+
+  window.MYSTRO_setData = setData;
+  window.MYSTRO_init = init;
+  window.addEventListener("DOMContentLoaded", init);
+})();
+
+</script>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  const DATA_URL = "./MiniMystro.json"; // must sit next to this HTML file on the host
+
+  const uploadView = document.getElementById("upload-view");
+  const rosterView = document.getElementById("roster-view");
+  const scorecardView = document.getElementById("scorecard-view");
+  const errorEl = document.getElementById("upload-error");
+  const loadMeta = document.getElementById("load-meta");
+  const loadMetaValue = document.getElementById("load-meta-value");
+  const refreshBtn = document.getElementById("refresh-btn");
+  const refreshBtnLabel = document.getElementById("refresh-btn-label");
+  const refreshBtnInline = document.getElementById("refresh-btn-inline");
+  const toastEl = document.getElementById("toast");
+
+  let lastGeneratedAt = null; // generatedAt of the currently-rendered snapshot, used to detect "no new data"
+  let toastTimer = null;
+
+  function showToast(message, kind) {
+    if (!toastEl) return;
+    clearTimeout(toastTimer);
+    toastEl.textContent = message;
+    toastEl.className = "toast show " + (kind || "neutral");
+    toastTimer = setTimeout(() => { toastEl.classList.remove("show"); }, 3200);
+  }
+
+  function formatLoadedAt(iso) {
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d.getTime())) return "unknown time";
+    return d.toLocaleString(undefined, {
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+    });
+  }
+
+  function showUpload(message = "") {
+    uploadView?.classList.add("active");
+    rosterView?.classList.remove("active");
+    scorecardView?.classList.remove("active");
+    if (errorEl) errorEl.textContent = message;
+  }
+
+  function showViewer() {
+    uploadView?.classList.remove("active");
+    rosterView?.classList.add("active");
+    scorecardView?.classList.remove("active");
+  }
+
+  function validateExport(data) {
+    if (!data || typeof data !== "object") {
+      return { ok: false, message: "This doesn't look like a valid Mystro export." };
+    }
+    if (!Array.isArray(data.mtd) || !Array.isArray(data.daily)) {
+      return { ok: false, message: "This doesn't look like a valid Mystro export." };
+    }
+    if (data.schemaVersion !== undefined && ![1, 2].includes(Number(data.schemaVersion))) {
+      return { ok: true, message: "Unsupported Mystro export version. Rendering anyway because the data shape still looks compatible." };
+    }
+    return { ok: true, message: "" };
+  }
+
+  function setLoadingState(isLoading) {
+    if (refreshBtn) {
+      refreshBtn.disabled = isLoading;
+      refreshBtn.classList.toggle("loading", isLoading);
+    }
+    if (refreshBtnLabel) refreshBtnLabel.textContent = isLoading ? "Checking…" : "Refresh";
+    if (refreshBtnInline) {
+      refreshBtnInline.disabled = isLoading;
+      refreshBtnInline.classList.toggle("loading", isLoading);
+    }
+  }
+
+  function updateLoadMeta() {
+    if (!loadMeta || !loadMetaValue) return;
+    if (lastGeneratedAt) {
+      loadMeta.classList.remove("hidden");
+      loadMetaValue.textContent = formatLoadedAt(lastGeneratedAt);
+    } else {
+      loadMeta.classList.add("hidden");
+    }
+  }
+
+  async function fetchData({ isManualRefresh }) {
+    setLoadingState(true);
+    if (errorEl) errorEl.textContent = "";
+    try {
+      // cache-bust so GitHub Pages / the browser never serves a stale copy of the JSON
+      const bustUrl = DATA_URL + (DATA_URL.includes("?") ? "&" : "?") + "_=" + Date.now();
+      const res = await fetch(bustUrl, { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status);
+      }
+      const parsed = await res.json();
+      const result = validateExport(parsed);
+      if (!result.ok) {
+        showUpload(result.message);
+        showToast("Data file found but invalid.", "err");
+        return;
+      }
+
+      const incomingGeneratedAt = parsed.generatedAt || null;
+      const isSameSnapshot = isManualRefresh && lastGeneratedAt && incomingGeneratedAt && incomingGeneratedAt === lastGeneratedAt;
+
+      window.MYSTRO_DATA = parsed;
+      if (typeof window.MYSTRO_setData === "function") window.MYSTRO_setData(parsed);
+      if (typeof window.MYSTRO_init === "function") window.MYSTRO_init();
+      lastGeneratedAt = incomingGeneratedAt;
+      updateLoadMeta();
+      showViewer();
+      if (errorEl) errorEl.textContent = result.message || "";
+
+      if (isManualRefresh) {
+        showToast(isSameSnapshot ? "Already up to date" : "Report updated", isSameSnapshot ? "neutral" : "ok");
+      }
+    } catch (err) {
+      if (isManualRefresh && window.MYSTRO_DATA) {
+        // a manual refresh failed but we still have a previously-loaded snapshot on screen — keep showing it
+        showToast("Couldn't reach MiniMystro.json. Still showing the last loaded report.", "err");
+      } else {
+        showUpload("Couldn't load MiniMystro.json. Make sure it's published in the same folder as this page, then tap Refresh.");
+      }
+    } finally {
+      setLoadingState(false);
+    }
+  }
+
+  refreshBtn?.addEventListener("click", () => fetchData({ isManualRefresh: true }));
+  refreshBtnInline?.addEventListener("click", () => fetchData({ isManualRefresh: true }));
+
+  // initial load on page open
+  fetchData({ isManualRefresh: false });
+})();
+</script>
+
+</body>
+</html>
